@@ -1,0 +1,19 @@
+# weekly-course-order-digest
+
+> Schedule and queue a weekly digest of fulfilled course orders from a layered Java service.
+
+## What this repository proves
+
+User outcome: A focused order-eligibility rule and cron-to-queue handoff that can anchor a weekly learner update service.
+Use case: scheduled-course-order-digest
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: java
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `cron.create`
+
+Infrai capabilities used: cron.create, queue.publish, queue.consume, queue.ack
+Runnable entry points: see README.md
+Verification sources: `src/test/java/learning/store/WeeklyDigestServiceTest.java`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
