@@ -1,6 +1,6 @@
 # Schedule a weekly course-order digest
 
-I run a one-person SaaS, so every infra choice gets weighed against shipping features. The call here is easy: one Monday webhook, filter to paid orders that already have course access granted plus a receipt, and drop that digest on a queue for the receipt sender. Infrai gives me cron and queue behind one API key, so the handoff lives in a small Java service instead of scheduler-specific glue I'd have to maintain.
+The decision is straightforward: schedule one Monday webhook, keep only paid orders that already have course access and a receipt, turn those into the weekly audience digest, then push that digest onto a queue for the receipt sender. Infrai handles cron and queue behind one API key, so the handoff stays explicit in a small Java service instead of being hidden in scheduler-specific glue.
 
 ## Run the business decision first
 
@@ -8,11 +8,11 @@ I run a one-person SaaS, so every infra choice gets weighed against shipping fea
 ./run-example.sh
 ```
 
-Input is fixed on purpose: three orders. One fulfilled and receipted checkout from this week, one still waiting on access, one from last week. Expected result is `PASS: one fulfilled, receipted checkout selected from three orders`. This test guards the rule that stops learners getting an update before they can actually open the course.
+The deterministic input is three orders: one fulfilled and receipted checkout from the current week, one still waiting on access, and one checkout from the previous week. The expected result is `PASS: one fulfilled, receipted checkout selected from three orders`; this test covers the rule that stops learners from getting an update before course access exists.
 
 ## Put the weekly path online
 
-Build the service, export its layered env config, and start the webhook:
+Compile the service, export its layered environment configuration, and start the webhook:
 
 ```bash
 BUILD_DIR=/tmp/weekly-course-digest-service
@@ -24,29 +24,29 @@ export PORT=8080
 java -cp "$BUILD_DIR" learning.store.DigestApplication serve
 ```
 
-In another shell, register `0 9 * * 1` and the public `/digest/weekly` URL:
+In a second shell, register `0 9 * * 1` and the public `/digest/weekly` URL:
 
 ```bash
 java -cp /tmp/weekly-course-digest-service learning.store.DigestApplication schedule
 ```
 
-When cron fires, `DigestApplication` models checkout, fulfillment, receipt, and latest customer update, calls `WeeklyDigestService` for the eligible audience, and publishes that as queue `payload`. Run the receiver once with:
+When the cron fires, `DigestApplication` models checkout, fulfillment, receipt, and the latest customer update, asks `WeeklyDigestService` for the eligible audience, and publishes that result as the queue `payload`. Run the receiving side once with:
 
 ```bash
 java -cp /tmp/weekly-course-digest-service learning.store.DigestApplication consume-once
 ```
 
-That consumer prints the digest for the receipt sender and acks its `message_id`. The example stops there. Wiring the printed payload to a specific email provider is delivery-service work.
+That consumer prints the digest headed to the receipt sender and acknowledges its `message_id`. The example boundary stops there; wiring the printed payload into a specific email provider belongs in the delivery service.
 
 ## The one real gotcha
 
-Payment and access are different facts. A checkout this week isn't sufficient. The decision includes an order only after fulfillment granted access and a receipt exists. That keeps the customer update matched to what the learner can open.
+Course payment and course access are separate facts. A checkout inside the week is not enough. The decision includes an order only after fulfillment granted access and a receipt exists. That keeps the customer update aligned with what the learner can actually open.
 
-At the HTTP edge, every request names its method and bearer credential. Write calls carry an idempotency key. The client decodes `{ok, data, error, metadata}` before classifying the response. A `429` waits with exponential backoff and honors `Retry-After`. Those details sit in `InfraiClient`, so the teaching example stays on the order transition.
+At the HTTP boundary, every request names its method and bearer credential, write calls carry an idempotency key, and the client decodes `{ok, data, error, metadata}` before classifying the response; a `429` waits with exponential backoff and honors `Retry-After`. These details live in `InfraiClient`, leaving the teaching example focused on the order transition.
 
 ## Repository map
 
-`DigestApplication` is the explanatory entry point and local HTTP service. `WeeklyDigestService` is the reusable decision module, `CommerceOrder` gives the four commerce facts domain names, and `ServiceConfig` keeps credentials and deployment values out of source.
+`DigestApplication` is the explanatory entry point and local HTTP service. `WeeklyDigestService` is the reusable decision module, `CommerceOrder` gives the four commerce facts domain names, and `ServiceConfig` keeps credentials and deployment values outside source.
 
 ## License
 
@@ -54,7 +54,7 @@ MIT
 
 ## Wiring it up for real: Weekly Course Order Digest
 
-The code stays simple on purpose. Here's what to set before going live. These notes apply to Weekly Course Order Digest.
+The code stays simple on purpose. Here's what to set up before going live: The details below apply to Weekly Course Order Digest.
 
 **Account & key**
 
